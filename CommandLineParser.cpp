@@ -1,6 +1,7 @@
 /**
  * @file CommandLineParser.h
  * @author Marc S. Ressl
+ * @authors Nicolás Beade - Franco Dorfman - Vito Pensa Piccolo - Federico Gentile
  * @brief Quick and dirty command line parser
  * @version 0.2
  *

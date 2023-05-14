@@ -1,6 +1,7 @@
 /**
  * @file main.cpp
  * @author Marc S. Ressl
+ * @authors Nicolás Beade - Franco Dorfman - Vito Pensa Piccolo - Federico Gentile
  * @brief
  * @version 0.2
  *

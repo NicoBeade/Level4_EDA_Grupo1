@@ -23,3 +23,11 @@ if(MICROHTTPD_BINARIES)
     endif()
     file(COPY ${MICROHTTPD_BINARIES} DESTINATION ${OUTPUT_DIR} NO_SOURCE_PERMISSIONS)
 endif()
+
+
+# Test
+enable_testing()
+
+add_executable(main_test main_test.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
+
+add_test(NAME test1 COMMAND main_test)

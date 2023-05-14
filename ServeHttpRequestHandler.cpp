@@ -1,6 +1,7 @@
 /**
  * @file ServeHttpRequestHandler.h
  * @author Marc S. Ressl
+ * @authors Nicolás Beade - Franco Dorfman - Vito Pensa Piccolo - Federico Gentile
  * @brief Simple HTTP request handler that serves files
  * @version 0.2
  *

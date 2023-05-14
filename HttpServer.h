@@ -1,6 +1,7 @@
 /**
  * @file HttpServer.h
  * @author Marc S. Ressl
+ * @authors Nicolás Beade - Franco Dorfman - Vito Pensa Piccolo - Federico Gentile
  * @brief Simple interface to libmicrohttpd
  * @version 0.2
  *
