@@ -29,5 +29,8 @@ endif()
 enable_testing()
 
 add_executable(main_test main_test.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
+target_include_directories(main_test PRIVATE ${MICROHTTPD_INCLUDE_PATHS})
+target_link_libraries(main_test PRIVATE ${MICROHTTPD_LIBRARIES})
+
 
 add_test(NAME test1 COMMAND main_test)

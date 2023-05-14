@@ -7,3 +7,19 @@
  * @copyright Copyright (c) 2022-2023
  *
  */
+
+#include <iostream>
+
+#include <microhttpd.h>
+
+#include "CommandLineParser.h"
+#include "HttpServer.h"
+#include "EDAoogleHttpRequestHandler.h"
+
+using namespace std;
+
+int main(int argc, const char *argv[])
+{
+
+    return 0;
+}
