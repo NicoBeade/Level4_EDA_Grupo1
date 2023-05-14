@@ -1,7 +1,7 @@
 /**
  * @file main_test.cpp
  * @authors Nicolás Beade - Franco Dorfman - Vito Pensa Piccolo - Federico Gentile
- * @brief Corazones - test module
+ * @brief EDAoogle - test module
  * @version 0.2
  *
  * @copyright Copyright (c) 2022-2023
@@ -18,8 +18,28 @@
 
 using namespace std;
 
-int main(int argc, const char *argv[])
-{
+void print(string s);
+int fail();
+int pass();
 
+int main()
+{
+    return 0;
+}
+
+void print(string s)
+{
+    cout << s;
+}
+
+int fail()
+{
+    cout << "FAIL" << endl;
+    return 1;
+}
+
+int pass()
+{
+    cout << "PASS" << endl;
     return 0;
 }
