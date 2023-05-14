@@ -74,7 +74,8 @@ MHD_Result httpRequestHandlerCallback(void *cls,
     {
         // Get arguments
         HttpArguments arguments;
-        MHD_get_connection_values(connection, MHD_GET_ARGUMENT_KIND, httpGetArgumentCallback, &arguments);
+        MHD_get_connection_values(connection, MHD_GET_ARGUMENT_KIND, httpGetArgumentCallback, 
+                                  &arguments);
 
         // Make response
         int statusCode;

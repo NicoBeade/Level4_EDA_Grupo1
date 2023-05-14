@@ -14,7 +14,8 @@
 
 using namespace std;
 
-EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
+EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : 
+ServeHttpRequestHandler(homePath)
 {
 }
 
@@ -38,7 +39,8 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
     <title>EDAoogle</title>\
     <link rel=\"preload\" href=\"https://fonts.googleapis.com\" />\
     <link rel=\"preload\" href=\"https://fonts.gstatic.com\" crossorigin />\
-    <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap\" rel=\"stylesheet\" />\
+    <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;800&display=swap\" 
+    rel=\"stylesheet\" />\
     <link rel=\"preload\" href=\"../css/style.css\" />\
     <link rel=\"stylesheet\" href=\"../css/style.css\" />\
 </head>\

@@ -22,7 +22,8 @@ typedef std::map<std::string, std::string> HttpArguments;
 class HttpRequestHandler
 {
 public:
-    virtual bool handleRequest(std::string url, HttpArguments arguments, std::vector<char> &response) = 0;
+    virtual bool handleRequest(std::string url, HttpArguments arguments, 
+                               std::vector<char> &response) = 0;
 };
 
 class HttpServer
@@ -40,7 +41,8 @@ private:
 
     // Grant private access to libmicrohttp request handler
     friend MHD_Result httpRequestHandlerCallback(void *cls, struct MHD_Connection *connection,
-                                                 const char *url, const char *method, const char *version,
+                                                 const char *url, const char *method, 
+                                                 const char *version,
                                                  const char *upload_data, size_t *upload_data_size,
                                                  void **con_cls);
 };

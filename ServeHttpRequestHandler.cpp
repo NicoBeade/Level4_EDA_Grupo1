@@ -21,7 +21,8 @@ ServeHttpRequestHandler::ServeHttpRequestHandler(string homePath)
     this->homePath = homePath;
 }
 
-bool ServeHttpRequestHandler::handleRequest(string url, HttpArguments arguments, vector<char> &response)
+bool ServeHttpRequestHandler::handleRequest(string url, HttpArguments arguments, 
+                                            vector<char> &response)
 {
     return serve(url, response);
 }
