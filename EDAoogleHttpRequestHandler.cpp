@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 
 #include "EDAoogleHttpRequestHandler.h"
 
@@ -56,10 +57,20 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
             </form>\
         </div>\
         ");
-        
-        // YOUR JOB: fill in results
+
         float searchTime = 0.1F;
+
+        // YOUR JOB: fill in results
         vector<string> results;
+        //results returned from the search handler needs to be in vector<string> format
+        //not the name of the file or the title, just the raw url
+
+        results.push_back("/wiki/Yen.html");
+        //path is relative to "folder/www" so the url works like this
+        results.push_back("/wiki/Xi_Jinping.html");
+        //works like a queue and not like a stack: Yen will show up first, then Xi Jiping
+        //the function that returns the search results needs to return them in order of priority
+
 
         // Print search results
         responseString += "<div class=\"results\">" + to_string(results.size()) +

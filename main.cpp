@@ -23,7 +23,7 @@ using namespace std;
 #define PATH_CORRECTION "..\\..\\"
 
 #else
-#define PATH_CORRECTION ""
+#define PATH_CORRECTION "../"
 #endif
 
 int main(int argc, const char *argv[])
