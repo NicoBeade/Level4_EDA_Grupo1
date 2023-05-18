@@ -19,13 +19,20 @@
 
 using namespace std;
 
+#ifdef WIN32
+#define PATH_CORRECTION "..\\..\\"
+
+#else
+#define PATH_CORRECTION ""
+#endif
+
 int main(int argc, const char *argv[])
 {
     CommandLineParser parser(argc, argv);
 
     // Configuration
     int port = 8000;
-    string homePath = "www";
+    string homePath = PATH_CORRECTION "www";
 
     // Parse command line
     if (parser.hasOption("--help"))
