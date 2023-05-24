@@ -19,59 +19,45 @@
 
 using namespace std;
 
-string parseHTML(const std::string& html) {
-    string parsedHTML;
-    bool insideTag = false;
-    bool ignoreContent = false;
+class HTMLParser {
+public:
+  HTMLParser(string html) {
+    this->html = html;
+    this->current_index = 0;
+  }
 
-    for (size_t i = 0; i < html.length(); ++i) {
-        if (!ignoreContent) {
-            if (html[i] == '<' && html[i + 1] == '\\') {
-                insideTag = false;
-                ignoreContent = true;
-                ++i;
-            }
-            else if (html[i] == '<') {
-                insideTag = true;
-                continue;
-            }
-            else if (html[i] == '>') {
-                insideTag = false;
-                continue;
-            }
+  string parse() {
+    string text = "";
+    while (current_index < html.length()) {
+      char c = html[current_index];
+      if (c != '<') {
+        text += c;
+      } else {
+        // Skip the tag
+        while (html[current_index] != '>') {
+          current_index++;
         }
-        else {
-            if (html[i] == '>') {
-                ignoreContent = false;
-            }
-            continue;
-        }
-
-        if (!insideTag && !ignoreContent) {
-            parsedHTML += html[i];
-        }
+      }
+      current_index++;
     }
-    return parsedHTML;
-}
+    return text;
+  }
+
+private:
+  string html;
+  int current_index;
+};
 
 void print(string s);
 int fail();
 int pass();
 
-int main()
-{
-    string prueba = "<html>\n"
-                       "<head>\n"
-                       "<title>Sample Page</title>\n"
-                       "</head>\n"
-                       "<body>\n"
-                       "<h1>Hello, World!</h1>\n"
-                       "<p>This is a sample paragraph.</p>\n"
-                       "This <\\ is not a tag.\n"
-                       "</body>\n"
-                       "</html>";
-    cout << parseHTML(prueba) << endl;
-    return 0;
+int main() {
+  string html = "<html><head><title>This is a title</title></head><body><p>This is a paragraph</p></body></html>";
+  HTMLParser parser(html);
+  string text = parser.parse();
+  cout << text << endl;
+  return 0;
 }
 
 void print(string s)
