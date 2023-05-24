@@ -6,11 +6,17 @@
  * @version 0.2
  *
  * @copyright Copyright (c) 2022-2023
+ * 
+ * Implementation of a search engine for html pages
+ * -The output of the program is based on the TF-IDF algorithm, which sorts the pages according 
+ * to how representative of a file is a given word.
+ * @cite https://www.youtube.com/watch?v=6HuKFh0BatQ
+ * -There was another layer of complexity added to the program. If the word being searched is in 
+ * a header or title then it weighs more than if it were in the body or in table.
  *
  */
 
 #include <iostream>
-
 #include <microhttpd.h>
 
 #include "CommandLineParser.h"
