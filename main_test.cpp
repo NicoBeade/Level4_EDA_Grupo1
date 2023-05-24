@@ -10,6 +10,8 @@
 
 #include <iostream>
 #include <string>
+#include <stack>
+#include <fstream>
 
 #include <microhttpd.h>
 
@@ -19,45 +21,99 @@
 
 using namespace std;
 
-class HTMLParser {
-public:
-  HTMLParser(string html) {
-    this->html = html;
-    this->current_index = 0;
-  }
-
-  string parse() {
-    string text = "";
-    while (current_index < html.length()) {
-      char c = html[current_index];
-      if (c != '<') {
-        text += c;
-      } else {
-        // Skip the tag
-        while (html[current_index] != '>') {
-          current_index++;
-        }
-      }
-      current_index++;
-    }
-    return text;
-  }
-
-private:
-  string html;
-  int current_index;
-};
+#define PATH_CORRECTION_HTML "..\\..\\www\\wiki\\"
 
 void print(string s);
 int fail();
 int pass();
 
+using namespace std;
+
+std::pair<std::string, std::string> filterHTMLContent(const std::string& htmlContent) {
+    std::string headersString;
+    std::string bodyString;
+
+    size_t pos = 0;
+
+    while (pos != std::string::npos && pos < htmlContent.length()) {
+        // Find the start of the next HTML tag
+        size_t startTagPos = htmlContent.find('<', pos);
+        if (startTagPos == std::string::npos)
+            break;
+
+        // Find the end of the current HTML tag
+        size_t endTagPos = htmlContent.find('>', startTagPos);
+        if (endTagPos == std::string::npos)
+            break;
+
+        // Extract the current HTML tag
+        std::string tag = htmlContent.substr(startTagPos, endTagPos - startTagPos + 1);
+
+        // Check if it is a header tag
+        if (tag.substr(0, 2) == "<h" && tag.back() == '>') {
+            // Extract the header text and add it to the headers string
+            size_t headerStartPos = endTagPos + 1;
+            size_t headerEndPos = htmlContent.find('<', headerStartPos);
+            if (headerEndPos == std::string::npos)
+                headerEndPos = htmlContent.length();
+            std::string headerText = htmlContent.substr(headerStartPos, headerEndPos - headerStartPos);
+            headersString += headerText + '\n';
+
+            // Move the position after the current header tag
+            pos = headerEndPos;
+        } else {
+            // Move the position after the current HTML tag
+            pos = endTagPos + 1;
+        }
+    }
+
+    // Extract the body text by skipping HTML tags
+    while (pos != std::string::npos && pos < htmlContent.length()) {
+        // Find the start of the next HTML tag
+        size_t startTagPos = htmlContent.find('<', pos);
+        if (startTagPos == std::string::npos)
+            break;
+
+        // Find the end of the current HTML tag
+        size_t endTagPos = htmlContent.find('>', startTagPos);
+        if (endTagPos == std::string::npos)
+            break;
+
+        // Move the position after the current HTML tag
+        pos = endTagPos + 1;
+    }
+
+    // Extract the remaining text as the body string
+    if (pos != std::string::npos && pos < htmlContent.length()) {
+        bodyString = htmlContent.substr(pos);
+    }
+
+    return std::make_pair(headersString, bodyString);
+}
+
+std::string readHTMLFile(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << filePath << std::endl;
+        return "";
+    }
+
+    std::string htmlContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
+
+    return htmlContent;
+}
+
 int main() {
-  string html = "<html><head><title>This is a title</title></head><body><p>This is a paragraph</p></body></html>";
-  HTMLParser parser(html);
-  string text = parser.parse();
-  cout << text << endl;
-  return 0;
+    std::string filePath = PATH_CORRECTION_HTML"Yogur.html";
+    std::string htmlContent = readHTMLFile(filePath);
+
+    std::pair<std::string, std::string> filteredContent = filterHTMLContent(htmlContent);
+
+    std::cout << "Headers:\n" << filteredContent.first << std::endl;
+    std::cout << "Body:\n" << filteredContent.second << std::endl;
+
+    return 0;
 }
 
 void print(string s)
