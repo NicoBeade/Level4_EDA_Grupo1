@@ -45,6 +45,10 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) :
             pair<string, string> filteredContent = filterHTMLContent(htmlContent);
 
             // TO-DO Aca tienen que meter el agregado de cada fila de la base de datos
+            // Para cada iteracion del for, 
+                    //el nombre del archivo lo consiguen con file.path().u8string()
+                    //los titulos los obtienen como filteredContent.first
+                    //el resto del texto lo obtienen como filteredContent.second
     
         }
     }
