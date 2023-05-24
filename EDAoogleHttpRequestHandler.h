@@ -17,8 +17,11 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <chrono>
+#include <filesystem>
 
 #include <microhttpd.h>
+#include <sqlite3.h>
 
 #include "HttpServer.h"
 #include "EDAoogleHttpRequestHandler.h"
@@ -29,16 +32,23 @@ using namespace std;
 #define HEADER 0
 #define NON_HEADER 1
 
+#ifdef WIN32
+#define PATH_CORRECTION "..\\..\\"
+
+#else
+#define PATH_CORRECTION "../"
+#endif
+
 class EDAoogleHttpRequestHandler : public ServeHttpRequestHandler
 {
 public:
-    EDAoogleHttpRequestHandler(std::string homePath);
+    EDAoogleHttpRequestHandler(string homePath);
 
-    bool handleRequest(std::string url, HttpArguments arguments, std::vector<char> &response);
+    bool handleRequest(std::string url, HttpArguments arguments, vector<char> &response);
 
 private:
     pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string &htmlContent);
-    string EDAoogleHttpRequestHandler::readHTMLFile(const std::string &filePath);
+    string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath);
 };
 
 

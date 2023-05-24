@@ -9,28 +9,52 @@
  *
  */
 
-#include <iostream>
-#include <fstream>
-#include <sqlite3.h>
-#include <chrono>
-#include <string.h>
-
 #include "EDAoogleHttpRequestHandler.h"
-
-using namespace std;
+#include <locale>
+#include <codecvt>
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName);
 
+/**
+ *@brief auxiliar function to work with files with unicode characters in the file names
+ *
+ *@param homePath path to the folder with the html files
+ **/
+wstring stringToWstring(const string& str) {
+    wstring_convert<codecvt_utf8<wchar_t>> converter;
+    return converter.from_bytes(str);
+}
+
+/**
+ *@brief class constructor
+ *
+ *@param homePath path to the folder with the html files
+ **/
 EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : 
                             ServeHttpRequestHandler(homePath)
 {   
+
+    filesystem::path folderPath = homePath + "/wiki";
+    filesystem::directory_iterator fileIterator(folderPath);
+
+    // process each file in the given folder
+    for (const auto& file : fileIterator) {
+        if (file.is_regular_file()) {
+            wstring wfilePath = stringToWstring(file.path().u8string());  // Convert to wstring if needed
+            string htmlContent = readHTMLFile(wfilePath);
+            pair<string, string> filteredContent = filterHTMLContent(htmlContent);
+
+            // TO-DO Aca tienen que meter el agregado de cada fila de la base de datos
+    
+        }
+    }
 
     char *zErrMsg = 0;
     int rc;
     char *sql;
 
     sqlite3 *db;
-    sqlite3_open("test.db", &db);
+    sqlite3_open(PATH_CORRECTION "test.db", &db);
 
     /* Create SQL statement */
     sql = "CREATE TABLE ARTICLES("
@@ -267,19 +291,19 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
  *@brief Puts html file into a single string
  *
  *@param filePath
- *@return stirng        raw html text
+ *@return string        raw html text
 
  **/
-string EDAoogleHttpRequestHandler::readHTMLFile(const std::string &filePath)
+string EDAoogleHttpRequestHandler::readHTMLFile(const wstring& filePath)
 {
-    ifstream file(filePath);
+    wifstream file(filePath);
     if (!file.is_open())
     {
-        cerr << "Failed to open file: " << filePath << endl;
+        wcerr << L"Failed to open file: " << filePath << endl;
         return "";
     }
 
-    string htmlContent((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+    string htmlContent((istreambuf_iterator<wchar_t>(file)), istreambuf_iterator<wchar_t>());
     file.close();
 
     return htmlContent;

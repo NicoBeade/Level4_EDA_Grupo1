@@ -19,13 +19,6 @@
 
 using namespace std;
 
-#ifdef WIN32
-#define PATH_CORRECTION "..\\..\\"
-
-#else
-#define PATH_CORRECTION "../"
-#endif
-
 int main(int argc, const char *argv[])
 {
     CommandLineParser parser(argc, argv);
