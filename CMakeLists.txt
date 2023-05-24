@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD 17)
 # main
 add_executable(edahttpd main.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
 
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
+    target_link_libraries(edahttpd PRIVATE unofficial::sqlite3::sqlite3)
+
 # libmicrohttps
 find_path(MICROHTTPD_INCLUDE_PATHS NAMES microhttpd.h)
 find_library(MICROHTTPD_LIBRARIES NAMES microhttpd libmicrohttpd libmicrohttpd-dll)
@@ -25,12 +28,13 @@ if(MICROHTTPD_BINARIES)
 endif()
 
 
+
 # Test
 enable_testing()
 
 add_executable(main_test main_test.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
 target_include_directories(main_test PRIVATE ${MICROHTTPD_INCLUDE_PATHS})
 target_link_libraries(main_test PRIVATE ${MICROHTTPD_LIBRARIES})
-
+target_link_libraries(main_test PRIVATE unofficial::sqlite3::sqlite3)
 
 add_test(NAME test1 COMMAND main_test)
