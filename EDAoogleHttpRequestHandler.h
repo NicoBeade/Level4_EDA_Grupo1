@@ -14,12 +14,32 @@
 
 #include "ServeHttpRequestHandler.h"
 
+#include <iostream>
+#include <string>
+#include <fstream>
+
+#include <microhttpd.h>
+
+#include "HttpServer.h"
+#include "EDAoogleHttpRequestHandler.h"
+
+using namespace std;
+
+#define PATH_CORRECTION_HTML "..\\..\\www\\wiki\\"
+#define HEADER 0
+#define NON_HEADER 1
+
 class EDAoogleHttpRequestHandler : public ServeHttpRequestHandler
 {
 public:
     EDAoogleHttpRequestHandler(std::string homePath);
 
     bool handleRequest(std::string url, HttpArguments arguments, std::vector<char> &response);
+
+private:
+    pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string &htmlContent);
+    string EDAoogleHttpRequestHandler::readHTMLFile(const std::string &filePath);
 };
+
 
 #endif
