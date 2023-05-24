@@ -22,6 +22,8 @@
 using namespace std;
 
 #define PATH_CORRECTION_HTML "..\\..\\www\\wiki\\"
+#define HEADER 0
+#define NON_HEADER 1
 
 void print(string s);
 int fail();
@@ -29,89 +31,109 @@ int pass();
 
 using namespace std;
 
-std::pair<std::string, std::string> filterHTMLContent(const std::string& htmlContent) {
-    std::string headersString;
-    std::string bodyString;
+/**
+ *@brief Separates header text from all other text
+ *
+ *@param htmlContent            raw html string          
+ *@return pair<string, string>  separated strings of headers and non-headers
+ *@cite https://www.geeksforgeeks.org/html-parser-in-c-cpp/
+ **/
+pair<string, string> filterHTMLContent(const string& htmlContent) {
+    string headersString = "";
+    string bodyString = "";
 
     size_t pos = 0;
 
-    while (pos != std::string::npos && pos < htmlContent.length()) {
+    int condition = 0;
+
+    while (pos != string::npos && pos < htmlContent.length()) {
         // Find the start of the next HTML tag
         size_t startTagPos = htmlContent.find('<', pos);
-        if (startTagPos == std::string::npos)
+        if (startTagPos == string::npos)
             break;
 
         // Find the end of the current HTML tag
         size_t endTagPos = htmlContent.find('>', startTagPos);
-        if (endTagPos == std::string::npos)
+        if (endTagPos == string::npos)
             break;
 
         // Extract the current HTML tag
-        std::string tag = htmlContent.substr(startTagPos, endTagPos - startTagPos + 1);
+        string tag = htmlContent.substr(startTagPos, endTagPos - startTagPos + 1);
 
         // Check if it is a header tag
-        if (tag.substr(0, 2) == "<h" && tag.back() == '>') {
-            // Extract the header text and add it to the headers string
-            size_t headerStartPos = endTagPos + 1;
-            size_t headerEndPos = htmlContent.find('<', headerStartPos);
-            if (headerEndPos == std::string::npos)
-                headerEndPos = htmlContent.length();
-            std::string headerText = htmlContent.substr(headerStartPos, headerEndPos - headerStartPos);
-            headersString += headerText + '\n';
-
-            // Move the position after the current header tag
-            pos = headerEndPos;
-        } else {
-            // Move the position after the current HTML tag
-            pos = endTagPos + 1;
+        if ((tag.substr(0, 3) == "<h1" || tag.substr(0, 3) == "<h2" || tag.substr(0, 3) == "<h3") 
+             && tag.back() == '>') {
+            condition = HEADER;
+        } 
+        else {
+            condition = NON_HEADER;
         }
-    }
 
-    // Extract the body text by skipping HTML tags
-    while (pos != std::string::npos && pos < htmlContent.length()) {
-        // Find the start of the next HTML tag
-        size_t startTagPos = htmlContent.find('<', pos);
-        if (startTagPos == std::string::npos)
-            break;
+        size_t startPos = endTagPos + 1;
+        size_t endPos = htmlContent.find('<', startPos);
 
-        // Find the end of the current HTML tag
-        size_t endTagPos = htmlContent.find('>', startTagPos);
-        if (endTagPos == std::string::npos)
-            break;
-
-        // Move the position after the current HTML tag
-        pos = endTagPos + 1;
-    }
-
-    // Extract the remaining text as the body string
-    if (pos != std::string::npos && pos < htmlContent.length()) {
-        bodyString = htmlContent.substr(pos);
+        while (htmlContent[startPos] == '<'){
+            string auxiliarTag = htmlContent.substr(startPos, 4);
+            // Check for "hidden" header tags
+            if (auxiliarTag.substr(0, 3) == "<h1" || auxiliarTag.substr(0, 3) == "<h2" 
+                || auxiliarTag.substr(0, 3) == "<h3"){
+                condition = HEADER;
+            }
+            startPos = htmlContent.find('>', startPos) + 1;
+            endPos = htmlContent.find('<', startPos);
+        }
+        
+        if (endPos == string::npos){
+            endPos = htmlContent.length();
+        }
+        string textToAdd = htmlContent.substr(startPos, endPos - startPos);
+        
+        switch (condition){
+            case HEADER:
+                headersString += textToAdd + ' ';
+                break;
+            case NON_HEADER:
+                bodyString += textToAdd + ' ';
+                break;
+            default:
+                break;
+        }
+        
+        // Move the position to the last processed character
+        pos = endPos;
     }
 
     return std::make_pair(headersString, bodyString);
 }
 
-std::string readHTMLFile(const std::string& filePath) {
-    std::ifstream file(filePath);
+/**
+ *@brief Puts html file into a single string
+ *
+ *@param filePath                   
+ *@return stirng        raw html text
+
+ **/
+string readHTMLFile(const std::string& filePath) {
+    ifstream file(filePath);
     if (!file.is_open()) {
-        std::cerr << "Failed to open file: " << filePath << std::endl;
+        cerr << "Failed to open file: " << filePath << endl;
         return "";
     }
 
-    std::string htmlContent((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    string htmlContent((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
     file.close();
 
     return htmlContent;
 }
 
 int main() {
-    std::string filePath = PATH_CORRECTION_HTML"Yogur.html";
-    std::string htmlContent = readHTMLFile(filePath);
+    string filePath = PATH_CORRECTION_HTML"Yogur.html";
+    string htmlContent = readHTMLFile(filePath);
 
-    std::pair<std::string, std::string> filteredContent = filterHTMLContent(htmlContent);
+    pair<std::string, std::string> filteredContent = filterHTMLContent(htmlContent);
 
-    std::cout << "Headers:\n" << filteredContent.first << std::endl;
-    std::cout << "Body:\n" << filteredContent.second << std::endl;
+    cout << "Headers:\n" << filteredContent.first << endl;
+    cout << "Body:\n" << filteredContent.second << endl;
 
     return 0;
 }
