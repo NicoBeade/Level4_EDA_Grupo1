@@ -28,29 +28,33 @@
 
 using namespace std;
 
-#define PATH_CORRECTION_HTML "..\\..\\www\\wiki\\"
+
 #define HEADER 0
 #define NON_HEADER 1
 
 #ifdef WIN32
 #define PATH_CORRECTION "..\\..\\"
+#define PATH_CORRECTION_HTML "..\\..\\www\\wiki\\"
+#define EXTRA_CHARACTERS_IN_PATH 10
 #define DB_NAME "wiki.db"
 
 #else
 #define PATH_CORRECTION "../"
+#define PATH_CORRECTION_HTML "../www/wiki/"
+#define EXTRA_CHARACTERS_IN_PATH 7
 #endif
 
 class EDAoogleHttpRequestHandler : public ServeHttpRequestHandler
 {
 public:
     EDAoogleHttpRequestHandler(string homePath);
-
     bool handleRequest(std::string url, HttpArguments arguments, vector<char> &response);
 
 private:
     pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string &htmlContent);
     string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath);
 };
+
 
 
 #endif

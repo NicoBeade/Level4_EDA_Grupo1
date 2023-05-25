@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 17)
 add_executable(edahttpd main.cpp CommandLineParser.cpp HttpServer.cpp ServeHttpRequestHandler.cpp EDAoogleHttpRequestHandler.cpp)
 
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
-    target_link_libraries(edahttpd PRIVATE unofficial::sqlite3::sqlite3)
+target_link_libraries(edahttpd PRIVATE unofficial::sqlite3::sqlite3)
 
 # libmicrohttps
 find_path(MICROHTTPD_INCLUDE_PATHS NAMES microhttpd.h)

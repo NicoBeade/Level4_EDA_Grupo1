@@ -9,7 +9,9 @@
  * 
  * Implementation of a search engine for html pages
  * -The output of the program is based on the TF-IDF algorithm, which sorts the pages according 
- * to how representative of a file is a given word.
+ * to how representative of a file is a given word. Note that the algorithm designed is BASED on
+ * TF-IDF, some modifications were made either in order to make the program more efficient or to
+ * decrease the complexity of developing the algorithm.
  * @cite https://www.youtube.com/watch?v=6HuKFh0BatQ
  * -There was another layer of complexity added to the program. If the word being searched is in 
  * a header or title then it weighs more than if it were in the body or in table.

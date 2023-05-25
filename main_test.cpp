@@ -21,7 +21,7 @@ void print(string s);
 int fail();
 int pass();
 
-using namespace std;
+
 
 int main()
 {

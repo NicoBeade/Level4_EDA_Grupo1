@@ -12,12 +12,20 @@
  */
 
 #include "EDAoogleHttpRequestHandler.h"
-#include <locale>
-#include <codecvt>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <sqlite3.h>
+#include <unordered_map>
+#include <algorithm>
 
-static int callback(void *NotUsed, int argc, char **argv, char **azColName);
+
+bool compareByTermFrequency(const std::pair<std::string, float>& a, const std::pair<std::string, float>& b);
 string addCharacterNextTo(const string &input, char targetChar, char charToAdd);
 wstring stringToWstring(const string &str);
+void calculateTermFrequency(const std::string& word, std::vector<std::pair<std::string, float>>& termFrequencies);
+int termFrequencyCallback(void* data, int argc, char** argv, char** columnNames);
+int callback(void* data, int argc, char** argv, char** columnNames);
 
 /**
  *@brief class constructor
@@ -89,14 +97,16 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
             }
         }
     }
-
-    sqlite3_close(db);
 }
 
 /**
  *@brief class constructor
  *
- *@param homePath path to the folder with the html files
+ *@param url
+ *@param arguments
+ *@param response
+ *
+ *@return 
  **/
 bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                                HttpArguments arguments,
@@ -133,61 +143,33 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                        searchString + "\" autofocus>\
             </form>\
         </div>\
-        ");
-
+        ");       
+        
+        //searchInDatabase(searchString);
+        
         float searchTime;
 
-        // Se inicia el cronometro
-        std::chrono::time_point<std::chrono::system_clock> start, end; // time point y system clocks
-        start = std::chrono::system_clock::now();
 
-        // YOUR JOB: fill in results
+        // Se inicia el cronometro
+        chrono::time_point<chrono::system_clock> start, end; // time point y system clocks
+        start = chrono::system_clock::now();
+
+        std::vector<std::pair<std::string, float>> termFrequencies;
+        calculateTermFrequency(searchString, termFrequencies); 
+        std::sort(termFrequencies.begin(), termFrequencies.end(), compareByTermFrequency);
+        
         vector<string> results;
 
-        // results returned from the search handler needs to be in vector<string> format
-        // not the name of the file or the title, just the raw url
-
-        results.push_back("/wiki/Yen.html");
-        // path is relative to "folder/www" so the url works like this
-        results.push_back("/wiki/Xi_Jinping.html");
-        // works like a queue and not like a stack: Yen will show up first, then Xi Jiping
-        // the function that returns the search results needs to return them in order of priority
-
-        /* Create SQL statement and requirements */
-        char *zErrMsg = 0;
-        int rc;
-        char *sql;
-        sqlite3 *db;
-        const char* data = "Callback function called";
         
-        /* Open database */
-        rc = sqlite3_open(PATH_CORRECTION "wiki.db", &db);
-        
-        if( rc ) {
-            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        } else {
-            fprintf(stderr, "Opened database successfully\n");
+        for (const auto& pair : termFrequencies)
+        {
+            std::string path = pair.first.substr(EXTRA_CHARACTERS_IN_PATH); // Corrected path TO-DO different in linux!
+            results.push_back(path);
         }
 
-        /* Create SQL statement */
-        sql = "SELECT * from ARTICLES";
+        end = chrono::system_clock::now();
 
-        /* Execute SQL statement */
-        rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
-        
-        if( rc != SQLITE_OK ) {
-            fprintf(stderr, "SQL error: %s\n", zErrMsg);
-            sqlite3_free(zErrMsg);
-        } else {
-            fprintf(stdout, "Operation done successfully\n");
-        }
-
-        sqlite3_close(db);
-
-        // Finaliza el cronometro
-        end = std::chrono::system_clock::now();
-
-        std::chrono::duration<double> duration = end - start;
+        chrono::duration<double> duration = end - start;
         searchTime = (float)duration.count();
 
         // Print search results
@@ -203,24 +185,12 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
 </html>";
 
         response.assign(responseString.begin(), responseString.end());
-
         return true;
     }
     else
         return serve(url, response);
 
     return false;
-}
-
-static int callback(void *NotUsed, int argc, char **argv, char **azColName)
-{
-    int i;
-    for (i = 0; i < argc; i++)
-    {
-        //printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-    }
-    printf("\n");
-    return 0;
 }
 
 /**
@@ -355,8 +325,67 @@ string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath)
  *
  *@param homePath path to the folder with the html files
  **/
-wstring stringToWstring(const string &str)
+wstring stringToWstring(const string& str)
 {
-    wstring_convert<codecvt_utf8<wchar_t>> converter;
-    return converter.from_bytes(str);
+    wstring wideStr;
+    wideStr.reserve(str.length());
+
+    for (char ch : str)
+    {
+        wideStr.push_back(static_cast<wchar_t>(ch));
+    }
+
+    return wideStr;
+}
+
+
+int callback(void* data, int argc, char** argv, char** columnNames)
+{
+    int* count = static_cast<int*>(data);
+    (*count)++;
+
+    return 0;
+}
+
+int termFrequencyCallback(void* data, int argc, char** argv, char** columnNames)
+{
+    std::vector<std::pair<std::string, float>>& termFrequencies = *static_cast<std::vector<std::pair<std::string, float>>*>(data);
+
+    std::string path = argv[0] ? argv[0] : "NULL";
+    float termFrequency = std::stod(argv[1] ? argv[1] : "0");
+    termFrequencies.emplace_back(path, termFrequency);
+    return 0;
+}
+
+void calculateTermFrequency(const std::string& word, std::vector<std::pair<std::string, float>>& termFrequencies)
+{
+    sqlite3* database;
+    int result = sqlite3_open(PATH_CORRECTION DB_NAME, &database);
+
+    if (result != SQLITE_OK)
+    {
+        std::cerr << "Failed to open database: " << sqlite3_errmsg(database) << std::endl;
+        return;
+    }
+
+    std::string query = "SELECT PATH, (LENGTH(BODY) - LENGTH(REPLACE(LOWER(BODY), LOWER('" + word + "'), '')))\
+                     / CAST(LENGTH('" + word + "') AS FLOAT) /\
+                     (LENGTH(BODY) - LENGTH(REPLACE(BODY, ' ', '')))\
+                     AS TermFrequency FROM ARTICLES WHERE LOWER(BODY) LIKE\
+                     '%" + word + "%';";
+
+    result = sqlite3_exec(database, query.c_str(), termFrequencyCallback, &termFrequencies, nullptr);
+
+    if (result != SQLITE_OK)
+    {
+        std::cerr << "Failed to execute query: " << sqlite3_errmsg(database) << std::endl;
+    }
+
+    sqlite3_close(database);
+}
+
+bool compareByTermFrequency(const std::pair<std::string, float>& a, const std::pair<std::string, float>& b)
+{
+    // Sort in descending order based on the second element (term frequency)
+    return a.second > b.second;
 }
