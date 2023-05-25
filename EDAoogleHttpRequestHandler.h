@@ -19,6 +19,9 @@
 #include <fstream>
 #include <chrono>
 #include <filesystem>
+#include <unordered_map>
+#include <algorithm>
+#include <sstream>
 
 #include <microhttpd.h>
 #include <sqlite3.h>
@@ -48,11 +51,23 @@ class EDAoogleHttpRequestHandler : public ServeHttpRequestHandler
 {
 public:
     EDAoogleHttpRequestHandler(string homePath);
-    bool handleRequest(std::string url, HttpArguments arguments, vector<char> &response);
+    bool handleRequest(string url, HttpArguments arguments, vector<char> &response);
 
 private:
+    /*String Management*/
+    wstring EDAoogleHttpRequestHandler::stringToWstring(const string &str);
+    vector<string> EDAoogleHttpRequestHandler::splitStringBySpace(const string &input);
+    string EDAoogleHttpRequestHandler::addCharacterNextTo(const string &input, char targetChar, 
+                                                          char charToAdd);
+    /*Frequency calculations*/
+    void EDAoogleHttpRequestHandler::calculateTermFrequency(const string& word, vector<pair<string,
+                                                            float>>& termFrequencies);
+    /**/
     pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string &htmlContent);
     string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath);
+
+    
+
 };
 
 

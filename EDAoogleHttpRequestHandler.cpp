@@ -6,35 +6,27 @@
  * @version 0.2
  *
  * @copyright Copyright (c) 2022-2023
- * 
+ *
  * @cite https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm was consulted
  *
  */
 
 #include "EDAoogleHttpRequestHandler.h"
-#include <cmath>
-#include <iostream>
-#include <string>
-#include <sqlite3.h>
-#include <unordered_map>
-#include <algorithm>
 
-
-bool compareByTermFrequency(const std::pair<std::string, float>& a, const std::pair<std::string, float>& b);
-string addCharacterNextTo(const string &input, char targetChar, char charToAdd);
-wstring stringToWstring(const string &str);
-void calculateTermFrequency(const std::string& word, std::vector<std::pair<std::string, float>>& termFrequencies);
-int termFrequencyCallback(void* data, int argc, char** argv, char** columnNames);
-int callback(void* data, int argc, char** argv, char** columnNames);
+/*Callback Prototypes*/
+int termFreqCallback(void *data, int argc, char **argv, char **columnNames);
+bool compareByTermFrequency(const pair<string, float> &a, const pair<string, float> &b);
+int countSpaceCharacters(const std::string& input);
 
 /**
  *@brief class constructor
  *
  *@param homePath path to the folder with the html files
  **/
-EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
+EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : 
+ServeHttpRequestHandler(homePath)
 {
-    if (filesystem::exists(PATH_CORRECTION DB_NAME)) 
+    if (filesystem::exists(PATH_CORRECTION DB_NAME))
     {
         return;
     }
@@ -50,10 +42,11 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
     sql = "CREATE TABLE ARTICLES("
           "TITLE           TEXT    NOT NULL,"
           "BODY            TEXT     NOT NULL,"
-          "PATH        CHAR(50));";
+          "PATH        CHAR(50),"
+          "WORDC          INT);";
 
     /* Execute SQL statement */
-    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    rc = sqlite3_exec(db, sql, nullptr, 0, &zErrMsg);
 
     if (rc != SQLITE_OK)
     {
@@ -72,12 +65,12 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
     {
         if (file.is_regular_file())
         {
-            wstring wfilePath = stringToWstring(file.path().u8string()); // Convert to wstring if needed
+            wstring wfilePath = stringToWstring(file.path().u8string()); // Convert to wstring
             string htmlContent = readHTMLFile(wfilePath);
             pair<string, string> filteredContent = filterHTMLContent(htmlContent);
             string correctedPath; // character ' in file names was conflictive with SQL
 
-            string sqlstring = "INSERT INTO ARTICLES (TITLE, BODY, PATH)";
+            string sqlstring = "INSERT INTO ARTICLES (TITLE, BODY, PATH, WORDC)";
             sqlstring += " VALUES ('";
             sqlstring += filteredContent.first;
             sqlstring += "', '";
@@ -85,10 +78,12 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
             sqlstring += "', '";
             correctedPath = addCharacterNextTo(file.path().u8string(), '\'', '\'');
             sqlstring += correctedPath;
+            sqlstring += "', '";
+            sqlstring += to_string(countSpaceCharacters(filteredContent.second));
             sqlstring += "');";
 
             sql = sqlstring.data();
-            rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+            rc = sqlite3_exec(db, sql, nullptr, 0, &zErrMsg);
 
             if (rc != SQLITE_OK)
             {
@@ -100,13 +95,13 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeH
 }
 
 /**
- *@brief class constructor
+ *@brief Request Handler. Processes input and calls the methods to perform searches
  *
- *@param url
- *@param arguments
- *@param response
+ *@param url            Cleaned url
+ *@param arguments      Needed to perform searches
+ *@param response       Needed to display the results of the search
  *
- *@return 
+ *@return
  **/
 bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                                HttpArguments arguments,
@@ -143,27 +138,27 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                        searchString + "\" autofocus>\
             </form>\
         </div>\
-        ");       
-        
-        //searchInDatabase(searchString);
-        
-        float searchTime;
+        ");
 
-
-        // Se inicia el cronometro
         chrono::time_point<chrono::system_clock> start, end; // time point y system clocks
         start = chrono::system_clock::now();
 
-        std::vector<std::pair<std::string, float>> termFrequencies;
-        calculateTermFrequency(searchString, termFrequencies); 
-        std::sort(termFrequencies.begin(), termFrequencies.end(), compareByTermFrequency);
-        
+        float searchTime;
+        vector<string> separatedStringSearch = splitStringBySpace(searchString);
+        vector<pair<string, float>> termFrequencies;
         vector<string> results;
 
-        
-        for (const auto& pair : termFrequencies)
+        for (const auto &word : separatedStringSearch)
         {
-            std::string path = pair.first.substr(EXTRA_CHARACTERS_IN_PATH); // Corrected path TO-DO different in linux!
+            string rectifiedWord = addCharacterNextTo(word, '\'', '\'');
+            calculateTermFrequency(rectifiedWord, termFrequencies);
+        }
+
+        sort(termFrequencies.begin(), termFrequencies.end(), compareByTermFrequency);
+
+        for (const auto &pair : termFrequencies)
+        {
+            string path = pair.first.substr(EXTRA_CHARACTERS_IN_PATH); // Corrected path
             results.push_back(path);
         }
 
@@ -176,8 +171,12 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         responseString += "<div class=\"results\">" + to_string(results.size()) +
                           " results (" + to_string(searchTime) + " seconds):</div>";
         for (auto &result : results)
+        {
+            string cleanedString = result.substr(5, result.length() - 10);
             responseString += "<div class=\"result\"><a href=\"" +
-                              result + "\">" + result + "</a></div>";
+                              result + "\">" + cleanedString + "</a></div>";
+        }
+
 
         // Trailer
         responseString += "    </article>\
@@ -193,28 +192,51 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
     return false;
 }
 
+
+
+/*________________________________________________________________________________________________
+
+                                AUXILIAR FUNCTIONS AND METHODS
+__________________________________________________________________________________________________*/
+
+
+/* FREQUENCY CALCULATOR */
+
 /**
- *@brief The character ' was problematic when working with SQL. Our solution was to add another ' next
- *       to the ' in the html text to "escape" in SQL. We could also have eliminated de ' character but
- *       this conflicted with finding path names when answering the user's search
- *@param input                      string to rectify
- *@param targetChar
- *@param charToAdd
- *@return string                    rectified string
+ *@brief Calculate the term frequency of a given word
+ *
+ *@param word                   searched word
+ *@param termFrequencies        vector of pairs: path vs term frequency for that register
+ *
  **/
-string addCharacterNextTo(const string &input, char targetChar, char charToAdd)
+void EDAoogleHttpRequestHandler::calculateTermFrequency(const string &word, vector<pair<string, 
+                                                        float>> &termFrequencies)
 {
-    string result;
-    for (size_t i = 0; i < input.length(); i++)
+    sqlite3 *database;
+    int result = sqlite3_open(PATH_CORRECTION DB_NAME, &database);
+
+    if (result != SQLITE_OK)
     {
-        result += input[i];
-        if (input[i] == targetChar)
-        {
-            result += charToAdd;
-        }
+        cerr << "Failed to open database: " << sqlite3_errmsg(database) << endl;
+        return;
     }
-    return result;
+
+    string query = "SELECT PATH, (LENGTH(BODY) - LENGTH(REPLACE(LOWER(BODY), \
+                    LOWER('" + word + "'), '')))\
+                     / CAST(LENGTH('" +
+                   word + "') AS FLOAT) / WORDC;";
+
+    result = sqlite3_exec(database, query.c_str(), termFreqCallback, &termFrequencies, nullptr);
+
+    if (result != SQLITE_OK)
+    {
+        cerr << "Failed to execute query: " << sqlite3_errmsg(database) << endl;
+    }
+
+    sqlite3_close(database);
 }
+
+/* HTML CONDITIONING */
 
 /**
  *@brief Separates header text from all other text
@@ -248,7 +270,8 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
         string tag = htmlContent.substr(startTagPos, endTagPos - startTagPos + 1);
 
         // Check if it is a header tag
-        if ((tag.substr(0, 3) == "<h1" || tag.substr(0, 3) == "<h2" || tag.substr(0, 3) == "<h3" || tag.substr(0, 6) == "<title") && tag.back() == '>')
+        if ((tag.substr(0, 3) == "<h1" || tag.substr(0, 3) == "<h2" || tag.substr(0, 3) == "<h3" 
+             || tag.substr(0, 6) == "<title") && tag.back() == '>')
         {
             condition = HEADER;
         }
@@ -264,7 +287,8 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
         {
             string auxiliarTag = htmlContent.substr(startTagPos, 5);
             // Check for "hidden" header tags
-            if (auxiliarTag.substr(0, 3) == "<h1" || auxiliarTag.substr(0, 3) == "<h2" || auxiliarTag.substr(0, 3) == "<h3")
+            if (auxiliarTag.substr(0, 3) == "<h1" || auxiliarTag.substr(0, 3) == "<h2" || 
+                auxiliarTag.substr(0, 3) == "<h3")
             {
                 condition = HEADER;
             }
@@ -277,7 +301,7 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
             endTagPos = htmlContent.length();
         }
         string textToAdd = htmlContent.substr(startTagPos, endTagPos - startTagPos);
-        textToAdd = addCharacterNextTo(textToAdd, '\'', '\''); // Character ' was problematic with SQL
+        textToAdd = addCharacterNextTo(textToAdd, '\'', '\''); // char ' was problematic with SQL
 
         switch (condition)
         {
@@ -301,7 +325,8 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
 /**
  *@brief Puts html file into a single string
  *
- *@param filePath
+ *@param filePath       path to file
+
  *@return string        raw html text
 
  **/
@@ -320,12 +345,16 @@ string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath)
     return htmlContent;
 }
 
+/* STRING MANAGEMENT */
+
 /**
  *@brief auxiliar function to work with files with unicode characters in the file names
  *
- *@param homePath path to the folder with the html files
+ *@param homePath               path to the folder with the html files
+ *
+ *@returns wstring              transformed string to wstring
  **/
-wstring stringToWstring(const string& str)
+wstring EDAoogleHttpRequestHandler::stringToWstring(const string &str)
 {
     wstring wideStr;
     wideStr.reserve(str.length());
@@ -338,53 +367,120 @@ wstring stringToWstring(const string& str)
     return wideStr;
 }
 
-
-int callback(void* data, int argc, char** argv, char** columnNames)
+/**
+ *@brief separates a given string into substrings for every space
+ *
+ *
+ *
+ *@param input            string to divide into substrings
+ *
+ *@return vector of separated strings
+ **/
+vector<string> EDAoogleHttpRequestHandler::splitStringBySpace(const string &input)
 {
-    int* count = static_cast<int*>(data);
-    (*count)++;
+    vector<string> separatedWords;
+    stringstream ss(input);
+    string word;
+
+    while (getline(ss, word, ' '))
+    {
+        if (!word.empty())
+        {
+            separatedWords.push_back(word);
+        }
+    }
+
+    return separatedWords;
+}
+
+/**
+ *@brief The character ' was problematic when working with SQL. Our solution was to add another ' next
+ *       to the ' in the html text to "escape" in SQL. We could also have eliminated de ' character but
+ *       this conflicted with finding path names when answering the user's search
+ *
+ *@param input                  string to rectify
+ *@param targetChar             character to detect
+ *@param charToAdd              character to add
+
+ *@return string                rectified string
+ **/
+string EDAoogleHttpRequestHandler::addCharacterNextTo(const string &input, char targetChar, 
+                                                      char charToAdd)
+{
+    string result;
+    for (size_t i = 0; i < input.length(); i++)
+    {
+        result += input[i];
+        if (input[i] == targetChar)
+        {
+            result += charToAdd;
+        }
+    }
+    return result;
+}
+
+/**
+ *@brief Counts space characters in a string to approximate number of words in a file
+ *
+ *@param input                  string to count spaces in
+ *
+ *@return int                   count
+ **/
+int countSpaceCharacters(const std::string& input) 
+{
+    int count = 0;
+
+    for (char c : input) {
+        if (c == ' ') {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+/* CALLBACKS */
+
+/**
+ *@brief Callback necessary to calculate the frequency of a word in a register. If the register
+ *       was already added then it adds up the frequencies of the terms involved
+ *
+ *@param data            vector of pairs string vs float
+ *@param argv            array containing the path in the 1st column and term frequency in the 2nd
+ *
+ *@return 0 (successfull)
+ **/
+int termFreqCallback(void *data, int argc, char **argv, char **columnNames)
+{
+    vector<pair<string, float>> &termFrequencies = *static_cast<vector<pair<string, float>> *>(data);
+
+    auto it = find_if(termFrequencies.begin(), termFrequencies.end(),
+    [&](const pair<string, float>& pair) {
+        return pair.first == argv[0];
+    });
+
+    if (it == termFrequencies.end())
+    {
+        string path = argv[0] ? argv[0] : "NULL";
+        float termFrequency = stof(argv[1] ? argv[1] : "0");
+        termFrequencies.emplace_back(path, termFrequency);
+    }
+    else 
+    {
+        (*it).second += stof(argv[1]);
+    }
 
     return 0;
 }
 
-int termFrequencyCallback(void* data, int argc, char** argv, char** columnNames)
-{
-    std::vector<std::pair<std::string, float>>& termFrequencies = *static_cast<std::vector<std::pair<std::string, float>>*>(data);
-
-    std::string path = argv[0] ? argv[0] : "NULL";
-    float termFrequency = std::stod(argv[1] ? argv[1] : "0");
-    termFrequencies.emplace_back(path, termFrequency);
-    return 0;
-}
-
-void calculateTermFrequency(const std::string& word, std::vector<std::pair<std::string, float>>& termFrequencies)
-{
-    sqlite3* database;
-    int result = sqlite3_open(PATH_CORRECTION DB_NAME, &database);
-
-    if (result != SQLITE_OK)
-    {
-        std::cerr << "Failed to open database: " << sqlite3_errmsg(database) << std::endl;
-        return;
-    }
-
-    std::string query = "SELECT PATH, (LENGTH(BODY) - LENGTH(REPLACE(LOWER(BODY), LOWER('" + word + "'), '')))\
-                     / CAST(LENGTH('" + word + "') AS FLOAT) /\
-                     (LENGTH(BODY) - LENGTH(REPLACE(BODY, ' ', '')))\
-                     AS TermFrequency FROM ARTICLES WHERE LOWER(BODY) LIKE\
-                     '%" + word + "%';";
-
-    result = sqlite3_exec(database, query.c_str(), termFrequencyCallback, &termFrequencies, nullptr);
-
-    if (result != SQLITE_OK)
-    {
-        std::cerr << "Failed to execute query: " << sqlite3_errmsg(database) << std::endl;
-    }
-
-    sqlite3_close(database);
-}
-
-bool compareByTermFrequency(const std::pair<std::string, float>& a, const std::pair<std::string, float>& b)
+/**
+ *@brief Compare callback to sort the results with "sort"
+ *
+ *@param a, b           two elements
+ *
+ *@returns bool indicating which of the parameters has a higher priority
+ **/
+bool compareByTermFrequency(const pair<string, float> &a, const pair<string, float> &b)
 {
     // Sort in descending order based on the second element (term frequency)
     return a.second > b.second;
