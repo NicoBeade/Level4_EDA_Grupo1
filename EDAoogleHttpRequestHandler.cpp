@@ -14,60 +14,34 @@
 #include <codecvt>
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName);
-
-/**
- *@brief auxiliar function to work with files with unicode characters in the file names
- *
- *@param homePath path to the folder with the html files
- **/
-wstring stringToWstring(const string& str) {
-    wstring_convert<codecvt_utf8<wchar_t>> converter;
-    return converter.from_bytes(str);
-}
+string addCharacterNextTo(const string &input, char targetChar, char charToAdd);
+wstring stringToWstring(const string &str);
 
 /**
  *@brief class constructor
  *
  *@param homePath path to the folder with the html files
  **/
-EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : 
-                            ServeHttpRequestHandler(homePath)
-{   
-
-    filesystem::path folderPath = homePath + "/wiki";
-    filesystem::directory_iterator fileIterator(folderPath);
-
-    // process each file in the given folder
-    for (const auto& file : fileIterator) {
-        if (file.is_regular_file()) {
-            wstring wfilePath = stringToWstring(file.path().u8string());  // Convert to wstring if needed
-            string htmlContent = readHTMLFile(wfilePath);
-            pair<string, string> filteredContent = filterHTMLContent(htmlContent);
-
-            // TO-DO Aca tienen que meter el agregado de cada fila de la base de datos
-            // Para cada iteracion del for, 
-                    //el nombre del archivo lo consiguen con file.path().u8string()
-                    //los titulos los obtienen como filteredContent.first
-                    //el resto del texto lo obtienen como filteredContent.second
-    
-        }
+EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) : ServeHttpRequestHandler(homePath)
+{
+    if (filesystem::exists(PATH_CORRECTION DB_NAME)) 
+    {
+        return;
     }
 
+    /* Create SQL statement and requirements */
     char *zErrMsg = 0;
     int rc;
     char *sql;
 
     sqlite3 *db;
-    sqlite3_open(PATH_CORRECTION "test.db", &db);
+    sqlite3_open(PATH_CORRECTION DB_NAME, &db);
 
-    /* Create SQL statement */
     sql = "CREATE TABLE ARTICLES("
-          "ID INT PRIMARY  KEY     NOT NULL,"
           "TITLE           TEXT    NOT NULL,"
           "BODY            TEXT     NOT NULL,"
           "PATH        CHAR(50));";
 
-    cout << sql << '\n';
     /* Execute SQL statement */
     rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
 
@@ -81,38 +55,47 @@ EDAoogleHttpRequestHandler::EDAoogleHttpRequestHandler(string homePath) :
         fprintf(stdout, "Table created successfully\n");
     }
 
-    int i = 1;
-    string title = "pito";
-    string body = "obama";
-    string path = "/wiki/Xi_Jinping.html";
-
-    string sqlstring = "INSERT INTO ARTICLES (ID, TITLE, BODY, PATH)";
-    sqlstring += " VALUES (";
-    sqlstring += to_string(i);
-    sqlstring += ", '";
-    sqlstring += title;
-    sqlstring += "', '";
-    sqlstring += body;
-    sqlstring += "', '";
-    sqlstring += path;
-    sqlstring += "');";
-
-    sql = sqlstring.data();
-    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-
-    if (rc != SQLITE_OK)
+    /* Iterate through all files in /wiki folder */
+    filesystem::path folderPath = homePath + "/wiki";
+    filesystem::directory_iterator fileIterator(folderPath);
+    for (const auto &file : fileIterator)
     {
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }
-    else
-    {
-        fprintf(stdout, "item %d created successfully\n", i);
+        if (file.is_regular_file())
+        {
+            wstring wfilePath = stringToWstring(file.path().u8string()); // Convert to wstring if needed
+            string htmlContent = readHTMLFile(wfilePath);
+            pair<string, string> filteredContent = filterHTMLContent(htmlContent);
+            string correctedPath; // character ' in file names was conflictive with SQL
+
+            string sqlstring = "INSERT INTO ARTICLES (TITLE, BODY, PATH)";
+            sqlstring += " VALUES ('";
+            sqlstring += filteredContent.first;
+            sqlstring += "', '";
+            sqlstring += filteredContent.second;
+            sqlstring += "', '";
+            correctedPath = addCharacterNextTo(file.path().u8string(), '\'', '\'');
+            sqlstring += correctedPath;
+            sqlstring += "');";
+
+            sql = sqlstring.data();
+            rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+
+            if (rc != SQLITE_OK)
+            {
+                fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                sqlite3_free(zErrMsg);
+            }
+        }
     }
 
     sqlite3_close(db);
 }
 
+/**
+ *@brief class constructor
+ *
+ *@param homePath path to the folder with the html files
+ **/
 bool EDAoogleHttpRequestHandler::handleRequest(string url,
                                                HttpArguments arguments,
                                                vector<char> &response)
@@ -168,6 +151,37 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
         // works like a queue and not like a stack: Yen will show up first, then Xi Jiping
         // the function that returns the search results needs to return them in order of priority
 
+        /* Create SQL statement and requirements */
+        char *zErrMsg = 0;
+        int rc;
+        char *sql;
+        sqlite3 *db;
+        const char* data = "Callback function called";
+        
+        /* Open database */
+        rc = sqlite3_open(PATH_CORRECTION "wiki.db", &db);
+        
+        if( rc ) {
+            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        } else {
+            fprintf(stderr, "Opened database successfully\n");
+        }
+
+        /* Create SQL statement */
+        sql = "SELECT * from ARTICLES";
+
+        /* Execute SQL statement */
+        rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
+        
+        if( rc != SQLITE_OK ) {
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        } else {
+            fprintf(stdout, "Operation done successfully\n");
+        }
+
+        sqlite3_close(db);
+
         // Finaliza el cronometro
         end = std::chrono::system_clock::now();
 
@@ -201,14 +215,34 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName)
     int i;
     for (i = 0; i < argc; i++)
     {
-        printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+        //printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
     }
     printf("\n");
     return 0;
 }
 
-
-
+/**
+ *@brief The character ' was problematic when working with SQL. Our solution was to add another ' next
+ *       to the ' in the html text to "escape" in SQL. We could also have eliminated de ' character but
+ *       this conflicted with finding path names when answering the user's search
+ *@param input                      string to rectify
+ *@param targetChar
+ *@param charToAdd
+ *@return string                    rectified string
+ **/
+string addCharacterNextTo(const string &input, char targetChar, char charToAdd)
+{
+    string result;
+    for (size_t i = 0; i < input.length(); i++)
+    {
+        result += input[i];
+        if (input[i] == targetChar)
+        {
+            result += charToAdd;
+        }
+    }
+    return result;
+}
 
 /**
  *@brief Separates header text from all other text
@@ -271,6 +305,7 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
             endTagPos = htmlContent.length();
         }
         string textToAdd = htmlContent.substr(startTagPos, endTagPos - startTagPos);
+        textToAdd = addCharacterNextTo(textToAdd, '\'', '\''); // Character ' was problematic with SQL
 
         switch (condition)
         {
@@ -298,7 +333,7 @@ pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string 
  *@return string        raw html text
 
  **/
-string EDAoogleHttpRequestHandler::readHTMLFile(const wstring& filePath)
+string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath)
 {
     wifstream file(filePath);
     if (!file.is_open())
@@ -311,4 +346,15 @@ string EDAoogleHttpRequestHandler::readHTMLFile(const wstring& filePath)
     file.close();
 
     return htmlContent;
+}
+
+/**
+ *@brief auxiliar function to work with files with unicode characters in the file names
+ *
+ *@param homePath path to the folder with the html files
+ **/
+wstring stringToWstring(const string &str)
+{
+    wstring_convert<codecvt_utf8<wchar_t>> converter;
+    return converter.from_bytes(str);
 }
