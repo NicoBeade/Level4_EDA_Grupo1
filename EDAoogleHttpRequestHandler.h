@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <sstream>
+#include <codecvt>
 
 #include <microhttpd.h>
 #include <sqlite3.h>
@@ -31,9 +32,8 @@
 
 using namespace std;
 
-
-#define HEADER 0
-#define NON_HEADER 1
+#define HEADER 1
+#define NON_HEADER 2
 
 #ifdef WIN32
 #define PATH_CORRECTION "..\\..\\"
@@ -56,14 +56,18 @@ public:
 private:
     /*String Management*/
     wstring EDAoogleHttpRequestHandler::stringToWstring(const string &str);
-    vector<string> EDAoogleHttpRequestHandler::splitStringBySpace(const string &input);
+    vector<string> EDAoogleHttpRequestHandler::splitStringByAddSymbol(const string &input);
     string EDAoogleHttpRequestHandler::addCharacterNextTo(const string &input, char targetChar, 
                                                           char charToAdd);
+    int EDAoogleHttpRequestHandler::countSpaceCharacters(const std::string& input);
+
     /*Frequency calculations*/
     void EDAoogleHttpRequestHandler::calculateTermFrequency(const string& word, vector<pair<string,
                                                             float>>& termFrequencies);
-    /**/
+    
+    /*HTML processing*/
     pair<string, string> EDAoogleHttpRequestHandler::filterHTMLContent(const string &htmlContent);
+    string EDAoogleHttpRequestHandler::parseHTMLContent(const string &htmlContent);
     string EDAoogleHttpRequestHandler::readHTMLFile(const wstring &filePath);
 
     

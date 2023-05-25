@@ -8,15 +8,17 @@
  * @copyright Copyright (c) 2022-2023
  *
  * @cite https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm was consulted
+ * 
+ * Please refer to main.cpp for an explanation of the project
  *
  */
 
 #include "EDAoogleHttpRequestHandler.h"
 
 /*Callback Prototypes*/
+
 int termFreqCallback(void *data, int argc, char **argv, char **columnNames);
 bool compareByTermFrequency(const pair<string, float> &a, const pair<string, float> &b);
-int countSpaceCharacters(const std::string& input);
 
 /**
  *@brief class constructor
@@ -40,7 +42,6 @@ ServeHttpRequestHandler(homePath)
     sqlite3_open(PATH_CORRECTION DB_NAME, &db);
 
     sql = "CREATE TABLE ARTICLES("
-          "TITLE           TEXT    NOT NULL,"
           "BODY            TEXT     NOT NULL,"
           "PATH        CHAR(50),"
           "WORDC          INT);";
@@ -65,21 +66,20 @@ ServeHttpRequestHandler(homePath)
     {
         if (file.is_regular_file())
         {
-            wstring wfilePath = stringToWstring(file.path().u8string()); // Convert to wstring
+            wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            wstring wfilePath = converter.from_bytes(file.path().u8string());
             string htmlContent = readHTMLFile(wfilePath);
-            pair<string, string> filteredContent = filterHTMLContent(htmlContent);
+            string htmlCleanedContent = parseHTMLContent(htmlContent);
             string correctedPath; // character ' in file names was conflictive with SQL
 
-            string sqlstring = "INSERT INTO ARTICLES (TITLE, BODY, PATH, WORDC)";
+            string sqlstring = "INSERT INTO ARTICLES (BODY, PATH, WORDC)";
             sqlstring += " VALUES ('";
-            sqlstring += filteredContent.first;
-            sqlstring += "', '";
-            sqlstring += filteredContent.second;
+            sqlstring += htmlCleanedContent;
             sqlstring += "', '";
             correctedPath = addCharacterNextTo(file.path().u8string(), '\'', '\'');
             sqlstring += correctedPath;
             sqlstring += "', '";
-            sqlstring += to_string(countSpaceCharacters(filteredContent.second));
+            sqlstring += to_string(countSpaceCharacters(htmlCleanedContent));
             sqlstring += "');";
 
             sql = sqlstring.data();
@@ -139,12 +139,11 @@ bool EDAoogleHttpRequestHandler::handleRequest(string url,
             </form>\
         </div>\
         ");
-
         chrono::time_point<chrono::system_clock> start, end; // time point y system clocks
         start = chrono::system_clock::now();
 
         float searchTime;
-        vector<string> separatedStringSearch = splitStringBySpace(searchString);
+        vector<string> separatedStringSearch = splitStringByAddSymbol(searchString);
         vector<pair<string, float>> termFrequencies;
         vector<string> results;
 
@@ -222,9 +221,10 @@ void EDAoogleHttpRequestHandler::calculateTermFrequency(const string &word, vect
     }
 
     string query = "SELECT PATH, (LENGTH(BODY) - LENGTH(REPLACE(LOWER(BODY), \
-                    LOWER('" + word + "'), '')))\
-                     / CAST(LENGTH('" +
-                   word + "') AS FLOAT) / WORDC;";
+                LOWER('" + word + "'), ''))) \
+                / CAST(LENGTH('" + word + "') AS FLOAT) / WORDC \
+                AS TermFrequency FROM ARTICLES WHERE LOWER(BODY) LIKE \
+                '%" + word + "%';";
 
     result = sqlite3_exec(database, query.c_str(), termFreqCallback, &termFrequencies, nullptr);
 
@@ -237,6 +237,63 @@ void EDAoogleHttpRequestHandler::calculateTermFrequency(const string &word, vect
 }
 
 /* HTML CONDITIONING */
+
+/**
+ *@brief Parses html into a string ignoring tags
+ *
+ *@param htmlContent            raw html string
+ *@return string                cleaned string
+ *@cite https://www.geeksforgeeks.org/html-parser-in-c-cpp/
+ **/
+string EDAoogleHttpRequestHandler::parseHTMLContent(const string &htmlContent)
+{
+    string contentString = "";
+
+    size_t pos = 0;
+
+    int condition = 0;
+
+    while (pos != string::npos && pos < htmlContent.length())
+    {
+        // Find the start of the next HTML tag
+        size_t startTagPos = htmlContent.find('<', pos);
+        if (startTagPos == string::npos)
+            break;
+
+        // Find the end of the current HTML tag
+        size_t endTagPos = htmlContent.find('>', startTagPos);
+        if (endTagPos == string::npos)
+            break;
+
+        // Extract the current HTML tag
+        string tag = htmlContent.substr(startTagPos, endTagPos - startTagPos + 1);
+
+        startTagPos = endTagPos + 1;
+        endTagPos = htmlContent.find('<', startTagPos);
+
+        while (htmlContent[startTagPos] == '<')
+        {
+            string auxiliarTag = htmlContent.substr(startTagPos, 5);
+            startTagPos = htmlContent.find('>', startTagPos) + 1;
+            endTagPos = htmlContent.find('<', startTagPos);
+        }
+
+        if (endTagPos == string::npos)
+        {
+            endTagPos = htmlContent.length();
+        }
+        string textToAdd = htmlContent.substr(startTagPos, endTagPos - startTagPos);
+        textToAdd = addCharacterNextTo(textToAdd, '\'', '\''); // char ' was problematic with SQL
+
+        contentString += textToAdd;
+
+        // Move the position to the last processed character
+        pos = endTagPos;
+    }
+
+    return contentString;
+}
+
 
 /**
  *@brief Separates header text from all other text
@@ -376,13 +433,13 @@ wstring EDAoogleHttpRequestHandler::stringToWstring(const string &str)
  *
  *@return vector of separated strings
  **/
-vector<string> EDAoogleHttpRequestHandler::splitStringBySpace(const string &input)
+vector<string> EDAoogleHttpRequestHandler::splitStringByAddSymbol(const string &input)
 {
     vector<string> separatedWords;
     stringstream ss(input);
     string word;
 
-    while (getline(ss, word, ' '))
+    while (getline(ss, word, '+'))
     {
         if (!word.empty())
         {
@@ -421,12 +478,13 @@ string EDAoogleHttpRequestHandler::addCharacterNextTo(const string &input, char 
 
 /**
  *@brief Counts space characters in a string to approximate number of words in a file
+         This could have been implemented with a sql search as well.
  *
  *@param input                  string to count spaces in
  *
  *@return int                   count
  **/
-int countSpaceCharacters(const std::string& input) 
+int EDAoogleHttpRequestHandler::countSpaceCharacters(const std::string& input) 
 {
     int count = 0;
 
