@@ -6,6 +6,8 @@
  * @version 0.2
  *
  * @copyright Copyright (c) 2022-2023
+ * 
+ * @cite https://www.tutorialspoint.com/sqlite/sqlite_c_cpp.htm was consulted
  *
  */
 
