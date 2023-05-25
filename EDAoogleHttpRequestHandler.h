@@ -34,6 +34,7 @@ using namespace std;
 
 #ifdef WIN32
 #define PATH_CORRECTION "..\\..\\"
+#define DB_NAME "wiki.db"
 
 #else
 #define PATH_CORRECTION "../"
