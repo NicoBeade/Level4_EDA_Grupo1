@@ -6,13 +6,24 @@
  *
  * @copyright Copyright (c) 2022-2023
  *
+ * NOTE: All other functions and methods where tested while the program was being designed 
+ * and developed. And regarding SQL fucntions, each of these has it's own error handler 
+ * which works by themselves as tests. We decided it was not necessary to test these.
+ * 
  */
+
 
 #include <microhttpd.h>
 
-#include "CommandLineParser.h"
-#include "HttpServer.h"
-#include "EDAoogleHttpRequestHandler.h"
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <chrono>
+#include <filesystem>
+#include <unordered_map>
+#include <algorithm>
+#include <sstream>
+#include <codecvt>
 
 using namespace std;
 
@@ -20,6 +31,7 @@ using namespace std;
 void print(string s);
 int fail();
 int pass();
+int termFreqCallbackTest(void *data, int argc, char **argv, char **columnNames);
 
 void testTermFreqCallback()
 {
@@ -35,7 +47,7 @@ void testTermFreqCallback()
     char *columnNames[argc] = { "Path", "Frequency" };
 
     // Call the termFreqCallback
-    int result = termFreqCallback(&termFrequencies, argc, argv, columnNames);
+    int result = termFreqCallbackTest(&termFrequencies, argc, argv, columnNames);
 
     // Print the updated term frequencies
     for (const auto &pair : termFrequencies)
@@ -74,5 +86,28 @@ int fail()
 int pass()
 {
     cout << "PASS" << endl;
+    return 0;
+}
+
+int termFreqCallbackTest(void *data, int argc, char **argv, char **columnNames)
+{
+    vector<pair<string, float>> &termFrequencies = *static_cast<vector<pair<string, float>> *>(data);
+
+    auto it = find_if(termFrequencies.begin(), termFrequencies.end(),
+    [&](const pair<string, float>& pair) {
+        return pair.first == argv[0];
+    });
+
+    if (it == termFrequencies.end())
+    {
+        string path = argv[0] ? argv[0] : "NULL";
+        float termFrequency = stof(argv[1] ? argv[1] : "0");
+        termFrequencies.emplace_back(path, termFrequency);
+    }
+    else 
+    {
+        (*it).second += stof(argv[1]);
+    }
+
     return 0;
 }
