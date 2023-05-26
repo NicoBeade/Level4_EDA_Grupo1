@@ -39,6 +39,11 @@
  * target_link_libraries(edahttpd PRIVATE unofficial::sqlite3::sqlite3)
  * THIS LIBRARY WAS USED TO BE ABLE TO PERFORM SQL SEARCHES
  * 
+ * NOTE: To perform searches with multiple words please make sure to write a '+' in between words if
+ * you desire to search them separately. Example:
+ *      "botella queso": will search for occurences of "botella queso" (not modifying the search string)
+ *      "botella+queso": will search for occurences of both "botella" and "queso"
+ * 
  * 
  */
 

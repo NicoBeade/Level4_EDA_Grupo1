@@ -11,6 +11,14 @@
  * 
  * Please refer to main.cpp for an explanation of the project
  *
+ * NOTE: To perform searches with multiple words please make sure to write a '+' in between words if
+ * you desire to search them separately. Example:
+ *      "botella queso": will search for occurences of "botella queso" (not modifying the search string)
+ *      "botella+queso": will search for occurences of both "botella" and "queso"
+ * 
+ * This module is in charge of handling the searches requested in the database created in its 
+ * constructor. If the constructor existed already, then it will not create the database.
+ * 
  */
 
 #include "EDAoogleHttpRequestHandler.h"
@@ -66,7 +74,7 @@ ServeHttpRequestHandler(homePath)
     {
         if (file.is_regular_file())
         {
-            wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
             wstring wfilePath = converter.from_bytes(file.path().u8string());
             string htmlContent = readHTMLFile(wfilePath);
             string htmlCleanedContent = parseHTMLContent(htmlContent);
@@ -484,7 +492,7 @@ string EDAoogleHttpRequestHandler::addCharacterNextTo(const string &input, char 
  *
  *@return int                   count
  **/
-int EDAoogleHttpRequestHandler::countSpaceCharacters(const std::string& input) 
+int EDAoogleHttpRequestHandler::countSpaceCharacters(const string& input) 
 {
     int count = 0;
 
